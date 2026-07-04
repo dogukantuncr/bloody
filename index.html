@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanlı Kabadayılar — Bloody Bastards</title>
+<style>
+  :root { --blood:#b71c1c; --gold:#e0a83e; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; background:#1a1410; overflow:hidden; font-family:'Trebuchet MS',system-ui,sans-serif; }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  canvas { background:#000; display:block; image-rendering:auto; touch-action:none; }
+  #hud {
+    position:absolute; top:0; left:0; width:100%; pointer-events:none;
+    display:flex; justify-content:space-between; padding:14px 22px; gap:20px;
+  }
+  .bar-box { flex:1; max-width:44%; }
+  .bar-box.right { text-align:right; }
+  .name { color:var(--gold); font-weight:bold; font-size:15px; text-shadow:1px 1px 2px #000; letter-spacing:1px; }
+  .bar { height:20px; background:#3a1010; border:2px solid #000; border-radius:4px; margin-top:4px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.6); }
+  .fill { height:100%; width:100%; background:linear-gradient(#e53935,#8e1010); transition:width .18s ease-out; }
+  #round { position:absolute; top:8px; left:50%; transform:translateX(-50%); color:var(--gold); font-weight:bold; font-size:14px; text-shadow:1px 1px 2px #000; pointer-events:none; }
+  #overlay {
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 40%, rgba(60,10,10,.72), rgba(0,0,0,.92)); color:#eee; text-align:center; padding:24px;
+  }
+  #overlay.hidden { display:none; }
+  #overlay h1 { font-size:clamp(30px,7vw,64px); color:var(--blood); text-shadow:3px 3px 0 #000, 0 0 24px rgba(183,28,28,.8); letter-spacing:2px; }
+  #overlay h2 { font-size:16px; color:var(--gold); margin-top:6px; letter-spacing:3px; }
+  #overlay .sub { font-size:clamp(22px,4vw,34px); color:var(--gold); margin-bottom:10px; }
+  .keys { display:grid; grid-template-columns:auto auto; gap:6px 18px; margin:18px 0; font-size:14px; color:#ddd; }
+  .keys b { color:var(--gold); }
+  .btn {
+    pointer-events:auto; cursor:pointer; margin-top:14px; padding:12px 34px; font-size:19px; font-weight:bold;
+    color:#fff; background:linear-gradient(#c62828,#7a1010); border:2px solid #000; border-radius:8px;
+    box-shadow:0 4px 0 #300, 0 6px 14px rgba(0,0,0,.5); letter-spacing:1px; text-transform:uppercase;
+  }
+  .btn:active { transform:translateY(3px); box-shadow:0 1px 0 #300; }
+  .mode-row { display:flex; gap:12px; margin-top:6px; }
+  .hint { font-size:12px; color:#998; margin-top:16px; max-width:440px; line-height:1.5; }
+  #touch { position:absolute; inset:0; pointer-events:none; }
+  .pad { position:absolute; pointer-events:auto; width:66px; height:66px; border-radius:50%;
+    background:rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.25); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:bold; user-select:none; }
+  @media (hover:hover) and (pointer:fine) { #touch { display:none; } }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div class="bar-box"><div class="name" id="n1">SEN</div><div class="bar"><div class="fill" id="hp1"></div></div></div>
+    <div id="round">RAUND 1</div>
+    <div class="bar-box right"><div class="name" id="n2">HAYDUT</div><div class="bar"><div class="fill" id="hp2"></div></div></div>
+  </div>
+
+  <div id="touch">
+    <div class="pad" id="tL" style="left:16px; bottom:96px;">◀</div>
+    <div class="pad" id="tR" style="left:96px; bottom:96px;">▶</div>
+    <div class="pad" id="tJ" style="left:56px; bottom:180px;">↑</div>
+    <div class="pad" id="tA" style="right:96px; bottom:96px; background:rgba(198,40,40,.35);">VUR</div>
+    <div class="pad" id="tB" style="right:16px; bottom:96px; background:rgba(60,120,200,.3);">SİPER</div>
+  </div>
+
+  <div id="overlay">
+    <h1>KANLI KABADAYILAR</h1>
+    <h2>BLOODY BASTARDS</h2>
+    <div class="keys">
+      <span><b>A / D</b> veya <b>◀ ▶</b></span><span>Hareket et</span>
+      <span><b>W</b> / <b>Boşluk</b></span><span>Zıpla</span>
+      <span><b>J</b> / <b>Fare-sol</b></span><span>Kılıcı savur (VUR)</span>
+      <span><b>K</b> / <b>Shift</b></span><span>Siper al (savunma)</span>
+      <span><b>S</b> tut</span><span>Kılıcı yukarı kaldır</span>
+    </div>
+    <div class="sub" id="ovSub">Dövüşe hazır mısın?</div>
+    <div class="mode-row">
+      <button class="btn" id="startBtn">DÖVÜŞ (1 KİŞİ)</button>
+      <button class="btn" id="start2" style="background:linear-gradient(#3f6ec2,#1e3a6e);">2 KİŞİ</button>
+    </div>
+    <div class="hint">Momentum önemli! Kılıcı ne kadar hızlı savurursan darbe o kadar güçlü olur. Rakibin siperini kır, dengesini boz, yere düşür. En iyi 3 raunttan 2'sini kazanan galip gelir.<br><span id="p2keys" style="display:none;color:#7ab;">2. Oyuncu: <b>◀ ▶</b> hareket, <b>↑</b> zıpla, <b>Sağ Ctrl</b> vur, <b>Enter</b> siper.</span></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   KANLI KABADAYILAR — Bloody Bastards tarzı ragdoll dövüş
+   Verlet fiziği + momentum tabanlı kılıç savurma.
+   ============================================================ */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W=960, H=540, GROUND=0;
+
+function resize(){
+  const maxW = Math.min(window.innerWidth, 1100);
+  const maxH = window.innerHeight;
+  let w = maxW, h = w*9/16;
+  if(h>maxH){ h=maxH; w=h*16/9; }
+  canvas.style.width=w+'px'; canvas.style.height=h+'px';
+  W=960; H=540;
+  canvas.width=W; canvas.height=H;
+  GROUND=H-64;
+}
+window.addEventListener('resize',resize); resize();
+
+/* ---------- Vektör yardımcıları ---------- */
+const GRAV=0.62, FRICTION=0.986, GROUND_FRICTION=0.80, BOUNCE=0.28;
+
+/* Nokta (Verlet parçacığı) */
+class Pt{
+  constructor(x,y,mass=1,pinnable=false){
+    this.x=x; this.y=y; this.px=x; this.py=y; this.mass=mass; this.pin=false;
+  }
+  integrate(){
+    if(this.pin) return;
+    const vx=(this.x-this.px)*FRICTION;
+    const vy=(this.y-this.py)*FRICTION;
+    this.px=this.x; this.py=this.y;
+    this.x+=vx; this.y+=vy+GRAV;
+    // zemin
+    if(this.y>GROUND){
+      this.y=GROUND;
+      this.py=this.y+vy*BOUNCE;
+      // yatay sürtünme
+      this.px=this.x - vx*GROUND_FRICTION;
+    }
+    // duvarlar
+    if(this.x<14){ this.x=14; this.px=this.x+ (this.x-this.px); }
+    if(this.x>W-14){ this.x=W-14; this.px=this.x+ (this.x-this.px); }
+  }
+  vx(){ return this.x-this.px; }
+  vy(){ return this.y-this.py; }
+  addVel(vx,vy){ this.px-=vx; this.py-=vy; }
+}
+/* Mesafe kısıtı */
+class Stick{
+  constructor(a,b,len,stiff=1){ this.a=a; this.b=b; this.len=len!=null?len:Math.hypot(a.x-b.x,a.y-b.y); this.stiff=stiff; }
+  solve(){
+    const a=this.a,b=this.b;
+    let dx=b.x-a.x, dy=b.y-a.y;
+    let d=Math.hypot(dx,dy)||0.001;
+    const diff=(this.len-d)/d*0.5*this.stiff;
+    const ox=dx*diff, oy=dy*diff;
+    const ma=a.pin?0:1, mb=b.pin?0:1, t=ma+mb||1;
+    a.x-=ox*(ma/t)*2*(mb?1:0.0000001+1); // fallback
+    // basit eşit dağıtım:
+    if(!a.pin){ a.x-=ox; a.y-=oy; }
+    if(!b.pin){ b.x+=ox; b.y+=oy; }
+  }
+}
+/* Açı yayı: bir eklemi hedef açıya çeker (kas gücü) */
+function angleSpring(center, from, to, targetAng, strength){
+  // hedef: 'to' noktasını, center etrafında from'a göre targetAng açısına getir
+  const baseAng=Math.atan2(from.y-center.y, from.x-center.x);
+  const want=baseAng+targetAng;
+  const len=Math.hypot(to.x-center.x,to.y-center.y);
+  const tx=center.x+Math.cos(want)*len;
+  const ty=center.y+Math.sin(want)*len;
+  to.x+=(tx-to.x)*strength;
+  to.y+=(ty-to.y)*strength;
+}
+
+/* ---------- Dövüşçü ---------- */
+class Fighter{
+  constructor(x, facing, color, isPlayer, name){
+    this.color=color; this.facing=facing; this.isPlayer=isPlayer; this.name=name;
+    this.hp=100; this.maxhp=100; this.dead=false;
+    this.color2 = color==='hero' ? '#c8b48a' : '#8a5a44';
+    this.tone   = color==='hero' ? '#e6d3a8' : '#a06a4e';
+    this.cloth  = color==='hero' ? '#2f5f9e' : '#7a1e1e';
+    // eklem noktaları
+    const gy=GROUND;
+    this.head = new Pt(x, gy-150, 1);
+    this.neck = new Pt(x, gy-128, 1);
+    this.hip  = new Pt(x, gy-70, 2);
+    this.hand = new Pt(x+facing*20, gy-120, 1);   // kılıç tutan el
+    this.elbow= new Pt(x+facing*12, gy-118, 1);
+    this.shoulder=new Pt(x, gy-124, 1);
+    this.offHand=new Pt(x-facing*16, gy-108, 1);   // diğer el (kalkan/denge)
+    this.footF=new Pt(x+facing*16, gy, 1.4);
+    this.footB=new Pt(x-facing*16, gy, 1.4);
+    this.kneeF=new Pt(x+facing*10, gy-34, 1);
+    this.kneeB=new Pt(x-facing*10, gy-34, 1);
+    this.swordTip=new Pt(x+facing*20, gy-160, 0.6);
+
+    this.pts=[this.head,this.neck,this.hip,this.hand,this.elbow,this.shoulder,this.offHand,
+              this.footF,this.footB,this.kneeF,this.kneeB,this.swordTip];
+
+    // iskelet
+    this.sticks=[
+      new Stick(this.head,this.neck),
+      new Stick(this.neck,this.hip,58),
+      new Stick(this.neck,this.shoulder,10),
+      new Stick(this.shoulder,this.elbow,26),
+      new Stick(this.elbow,this.hand,26),
+      new Stick(this.hand,this.swordTip,42,1),      // kılıç sap->uç
+      new Stick(this.neck,this.offHand,40,0.6),
+      new Stick(this.hip,this.kneeF,34),
+      new Stick(this.kneeF,this.footF,34),
+      new Stick(this.hip,this.kneeB,34),
+      new Stick(this.kneeB,this.footB,34),
+      new Stick(this.shoulder,this.hip,54,0.9),
+    ];
+    this.swordLen=42;
+
+    // durum
+    this.grounded=false; this.jumpCd=0; this.hitCd=0; this.stagger=0;
+    this.blocking=false; this.swing=0;      // savurma fazı
+    this.armTarget=-0.9;                    // kolun hedef açısı
+    this.swingVel=0;
+    this.attackAng=0;
+    this.balance=0;
+    this.spawnX=x;
+  }
+
+  get cx(){ return (this.footF.x+this.footB.x)/2; }
+  get alive(){ return this.hp>0 && !this.dead; }
+
+  integrate(){
+    for(const p of this.pts) p.integrate();
+  }
+  solve(iter){
+    for(let k=0;k<iter;k++){
+      for(const s of this.sticks) s.solve();
+    }
+  }
+
+  // Kontrol girdileri uygula (input: {left,right,jump,attack,block,up})
+  control(input, opp){
+    if(!this.alive) return;
+    if(this.stagger>0) this.stagger--;
+    if(this.hitCd>0) this.hitCd--;
+    if(this.jumpCd>0) this.jumpCd--;
+
+    this.grounded = this.footF.y>=GROUND-2 || this.footB.y>=GROUND-2;
+    const stunned = this.stagger>0;
+
+    // yatay hareket -> ayaklara kuvvet
+    const spd = stunned?0:1.7;
+    let mv=0;
+    if(input.left) mv-=1;
+    if(input.right) mv+=1;
+    if(mv!==0){
+      this.hip.addVel(mv*spd*0.5,0);
+      this.footF.addVel(mv*spd,0);
+      this.footB.addVel(mv*spd,0);
+      this.neck.addVel(mv*spd*0.3,0);
+      this.facing = mv>0?1:-1;
+    }
+    // yüze dön: rakibe bak (savaş hissi)
+    if(opp){ this.facing = opp.cx>this.cx?1:-1; }
+
+    // zıplama
+    if(input.jump && this.grounded && this.jumpCd<=0 && !stunned){
+      this.footF.addVel(0,-11); this.footB.addVel(0,-11);
+      this.hip.addVel(0,-11); this.neck.addVel(0,-9);
+      this.jumpCd=22;
+    }
+
+    // dik durma kası (denge): kalça ve boyunu ayakların üstüne çekmeye çalış
+    if(!stunned){
+      const stand = this.grounded?0.05:0.02;
+      const footMid=(this.footF.x+this.footB.x)/2;
+      this.hip.x += (footMid - this.hip.x)*stand;
+      this.neck.x += (footMid - this.neck.x)*stand*0.8;
+      // boyun-hip dikey hedefi
+      const targetNeckY=this.hip.y-58;
+      this.neck.y += (targetNeckY-this.neck.y)*0.04;
+    }
+
+    // === KILIÇ / KOL KONTROLÜ ===
+    this.blocking = !!input.block && !stunned;
+    const f=this.facing;
+
+    if(this.blocking){
+      // siper pozisyonu: kılıcı gövdenin önünde yatay tut
+      this.armTarget = f>0? -0.15 : Math.PI+0.15;
+      this.swordSpin(this.armTarget, 0.22);
+      this.offHand.x += ((this.neck.x+f*22)-this.offHand.x)*0.2;
+      this.offHand.y += ((this.neck.y+6)-this.offHand.y)*0.2;
+    } else if(input.attack && this.swing<=0 && this.hitCd<=0 && !stunned){
+      // savuruşu başlat: yukarıdan aşağı güçlü darbe
+      this.swing=16;
+      this.hitCd=26;
+    }
+
+    if(this.swing>0){
+      this.swing--;
+      // savurma yayı: yukarıdan (-2.1) aşağıya (0.5) doğru hızlı geç
+      const t=1-(this.swing/16);
+      const startA = f>0? -2.2 : (Math.PI+2.2);
+      const endA   = f>0? 0.5  : (Math.PI-0.5);
+      const a = startA + (endA-startA)*easeIn(t);
+      this.swordSpin(a, 0.5);
+      // kola ekstra hız kat
+    } else if(!this.blocking){
+      // varsayılan gard: kılıcı yukarı-hazır tut, S ile yukarı
+      let rest = f>0? -1.15 : (Math.PI+1.15);
+      if(input.up) rest = f>0? -2.0 : (Math.PI+2.0);
+      this.swordSpin(rest, 0.14);
+      this.offHand.x += ((this.neck.x-f*14)-this.offHand.x)*0.12;
+      this.offHand.y += ((this.neck.y+14)-this.offHand.y)*0.12;
+    }
+  }
+
+  // kolu+kılıcı belirli mutlak açıya sür (omuz merkezli)
+  swordSpin(absAng, strength){
+    const sh=this.shoulder;
+    const reach=52;
+    const hx=sh.x+Math.cos(absAng)*30;
+    const hy=sh.y+Math.sin(absAng)*30;
+    this.hand.x+=(hx-this.hand.x)*strength;
+    this.hand.y+=(hy-this.hand.y)*strength;
+    const tx=sh.x+Math.cos(absAng)*reach;
+    const ty=sh.y+Math.sin(absAng)*reach;
+    this.swordTip.x+=(tx-this.swordTip.x)*strength;
+    this.swordTip.y+=(ty-this.swordTip.y)*strength;
+    // dirsek ortada
+    this.elbow.x+=((sh.x+this.hand.x)/2 - this.elbow.x)*strength;
+    this.elbow.y+=((sh.y+this.hand.y)/2 - this.elbow.y)*strength;
+  }
+
+  // kılıç ucunun hızı (momentum)
+  swordSpeed(){ return Math.hypot(this.swordTip.vx(),this.swordTip.vy()); }
+
+  applyDamage(dmg, dirx, diry){
+    if(this.hp<=0) return;
+    this.hp=Math.max(0,this.hp-dmg);
+    this.stagger=Math.max(this.stagger, Math.min(30, 8+dmg));
+    // savrul
+    const k=0.5+dmg*0.05;
+    this.neck.addVel(dirx*k, diry*k-1);
+    this.head.addVel(dirx*k*1.2, diry*k);
+    this.hip.addVel(dirx*k*0.6, diry*k*0.4);
+    if(this.hp<=0){ this.dead=true; this.stagger=120; }
+  }
+
+  respawn(){
+    const gy=GROUND, x=this.spawnX, f=this.facing;
+    const set=(p,ox,oy)=>{ p.x=x+ox; p.y=gy+oy; p.px=p.x; p.py=p.y; };
+    set(this.head,0,-150); set(this.neck,0,-128); set(this.hip,0,-70);
+    set(this.shoulder,0,-124); set(this.hand,f*20,-120); set(this.elbow,f*12,-118);
+    set(this.offHand,-f*16,-108); set(this.footF,f*16,0); set(this.footB,-f*16,0);
+    set(this.kneeF,f*10,-34); set(this.kneeB,-f*10,-34); set(this.swordTip,f*20,-160);
+    this.hp=this.maxhp; this.dead=false; this.stagger=0; this.swing=0; this.hitCd=0;
+  }
+}
+function easeIn(t){ return t*t; }
+
+/* ---------- Kan efektleri ---------- */
+const blood=[];
+function spawnBlood(x,y,vx,vy,n=8,color='#c1121f'){
+  for(let i=0;i<n;i++){
+    blood.push({x,y,vx:vx*Math.random()*0.4+(Math.random()-0.5)*6,
+      vy:vy*Math.random()*0.4+(Math.random()-0.5)*6-2, life:40+Math.random()*30, r:1.5+Math.random()*2.5, color});
+  }
+}
+const splats=[];
+function updateBlood(){
+  for(let i=blood.length-1;i>=0;i--){
+    const b=blood[i];
+    b.vy+=0.4; b.x+=b.vx; b.y+=b.vy; b.vx*=0.99; b.life--;
+    if(b.y>=GROUND){ splats.push({x:b.x,y:GROUND,r:b.r*1.6,color:b.color,a:0.5}); blood.splice(i,1); continue; }
+    if(b.life<=0) blood.splice(i,1);
+  }
+  if(splats.length>240) splats.splice(0,splats.length-240);
+}
+
+/* ---------- Girdi ---------- */
+const keys={};
+addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+  if(e.code==='KeyP') togglePause();
+});
+addEventListener('keyup',e=>{ keys[e.code]=false; });
+// fare = vuruş
+let mouseAtk=false;
+canvas.addEventListener('mousedown',()=>mouseAtk=true);
+addEventListener('mouseup',()=>mouseAtk=false);
+
+// dokunmatik
+const touch={left:false,right:false,jump:false,attack:false,block:false};
+function bindPad(id,prop){
+  const el=document.getElementById(id);
+  const on=e=>{e.preventDefault();touch[prop]=true;};
+  const off=e=>{e.preventDefault();touch[prop]=false;};
+  el.addEventListener('touchstart',on,{passive:false});
+  el.addEventListener('touchend',off,{passive:false});
+  el.addEventListener('touchcancel',off,{passive:false});
+  el.addEventListener('mousedown',on); el.addEventListener('mouseup',off); el.addEventListener('mouseleave',off);
+}
+bindPad('tL','left');bindPad('tR','right');bindPad('tJ','jump');bindPad('tA','attack');bindPad('tB','block');
+
+function playerInput(){
+  return {
+    left: keys['KeyA']||keys['ArrowLeft']||touch.left,
+    right: keys['KeyD']||keys['ArrowRight']||touch.right,
+    jump: keys['KeyW']||keys['Space']||touch.jump,
+    attack: keys['KeyJ']||mouseAtk||touch.attack,
+    block: keys['KeyK']||keys['ShiftLeft']||keys['ShiftRight']||touch.block,
+    up: keys['KeyS'],
+  };
+}
+function player2Input(){
+  return {
+    left: keys['ArrowLeft'], right: keys['ArrowRight'],
+    jump: keys['ArrowUp'], attack: keys['ControlRight']||keys['Numpad0'],
+    block: keys['Enter'], up: keys['ArrowDown'],
+  };
+}
+
+/* ---------- AI ---------- */
+function aiInput(me, opp){
+  const inp={left:false,right:false,jump:false,attack:false,block:false,up:false};
+  if(!me.alive||!opp.alive) return inp;
+  const dx=opp.cx-me.cx, adx=Math.abs(dx);
+  me.aiT=(me.aiT||0)-1;
+  // yaklaş
+  if(adx>90){ if(dx>0) inp.right=true; else inp.left=true; }
+  else if(adx<52){ if(dx>0) inp.left=true; else inp.right=true; } // çok yakınsa geri
+  // rakip saldırıyorsa siper al
+  const oppSwinging = opp.swing>4;
+  if(oppSwinging && adx<130 && Math.random()<0.7){ inp.block=true; }
+  // menzildeyse ve rakip siperde değilse vur
+  if(adx<115 && me.hitCd<=0 && !inp.block){
+    if(!opp.blocking || Math.random()<0.25){
+      if(me.aiT<=0){ inp.attack=true; me.aiT=18+Math.random()*22; }
+    } else { inp.up=Math.random()<0.5; } // gard değiştir
+  }
+  // ara sıra zıpla
+  if(Math.random()<0.01) inp.jump=true;
+  return inp;
+}
+
+/* ---------- Çarpışma & Hasar ---------- */
+function segDist(px,py,ax,ay,bx,by){
+  const dx=bx-ax, dy=by-ay; const l2=dx*dx+dy*dy||1;
+  let t=((px-ax)*dx+(py-ay)*dy)/l2; t=Math.max(0,Math.min(1,t));
+  const cx=ax+t*dx, cy=ay+t*dy;
+  return {d:Math.hypot(px-cx,py-cy), cx, cy};
+}
+// kılıç -> rakip gövdesi çarpışması
+function swordHits(att, def){
+  if(!att.alive||!def.alive) return;
+  const spd=att.swordSpeed();
+  if(spd<9) return;                 // yeterince hızlı değil
+  if(att.hitReg>0){ att.hitReg--; return; }
+  // kılıç segmenti
+  const sx=att.hand.x, sy=att.hand.y, ex=att.swordTip.x, ey=att.swordTip.y;
+  // hedef parçaları
+  const targets=[
+    {p:def.head, r:16, mult:1.7, part:'head'},
+    {p:def.neck, r:14, mult:1.15},
+    {p:def.hip, r:16, mult:1.0},
+    {p:def.shoulder, r:12, mult:1.1},
+  ];
+  for(const t of targets){
+    // kılıç segmentine en yakın nokta
+    const dd=segDist(t.p.x,t.p.y,sx,sy,ex,ey);
+    if(dd.d < t.r){
+      // siper kontrolü: savunan blokluyor ve kılıç savunanın kılıç segmentine yakınsa savuştur
+      if(def.blocking){
+        const bd=segDist(dd.cx,dd.cy, def.hand.x,def.hand.y, def.swordTip.x,def.swordTip.y);
+        if(bd.d<34){
+          // parry! kıvılcım + geri tepme
+          spawnBlood(dd.cx,dd.cy, 0,0, 6, '#ffd54f');
+          const kx=(att.facing)* -3;
+          att.swordTip.addVel(kx,-2); att.hand.addVel(kx,-1);
+          def.hand.addVel(-att.facing*2,0);
+          att.hitReg=10;
+          sfxClang();
+          return;
+        }
+      }
+      // hasar momentuma bağlı
+      let dmg=Math.min(26, spd*0.9)*t.mult;
+      dmg=Math.round(dmg);
+      const nx=att.swordTip.vx(), ny=att.swordTip.vy();
+      const nl=Math.hypot(nx,ny)||1;
+      def.applyDamage(dmg, nx/nl*1.6, ny/nl*1.2);
+      spawnBlood(dd.cx,dd.cy, nx, ny, 6+Math.floor(dmg/3));
+      if(t.part==='head') spawnBlood(dd.cx,dd.cy, nx,ny, 6, '#c1121f');
+      att.hitReg=14;
+      sfxHit(dmg);
+      return;
+    }
+  }
+}
+
+/* ---------- Ses (WebAudio, dosyasız) ---------- */
+let actx=null;
+function audio(){ if(!actx){ try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } return actx; }
+function beep(freq,dur,type='square',vol=0.15){
+  const a=audio(); if(!a) return;
+  const o=a.createOscillator(), g=a.createGain();
+  o.type=type; o.frequency.value=freq;
+  g.gain.value=vol; o.connect(g); g.connect(a.destination);
+  o.start(); g.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+dur);
+  o.stop(a.currentTime+dur);
+}
+function sfxHit(dmg){ beep(90+dmg*4,0.14,'sawtooth',0.22); }
+function sfxClang(){ beep(1200,0.08,'triangle',0.18); beep(800,0.12,'square',0.1); }
+function sfxSwing(){ beep(300,0.06,'sine',0.06); }
+function sfxWin(){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,0.18,'square',0.16),i*120)); }
+
+/* ---------- Oyun durumu ---------- */
+let F1,F2, mode='menu', twoPlayer=false;
+let roundNum=1, wins1=0, wins2=0, roundState='fight', roundTimer=0, paused=false;
+const overlay=document.getElementById('overlay');
+const ovSub=document.getElementById('ovSub');
+
+function newMatch(two){
+  twoPlayer=two;
+  F1=new Fighter(280,  1,'hero', true, two?'OYUNCU 1':'SEN');
+  F2=new Fighter(680, -1,'foe',  false, two?'OYUNCU 2':'HAYDUT');
+  document.getElementById('n1').textContent=F1.name;
+  document.getElementById('n2').textContent=F2.name;
+  roundNum=1; wins1=0; wins2=0;
+  startRound();
+  mode='play'; overlay.classList.add('hidden');
+  audio();
+}
+function startRound(){
+  F1.respawn(); F2.respawn();
+  F1.spawnX=280; F2.spawnX=680;
+  F1.facing=1; F2.facing=-1;
+  document.getElementById('round').textContent='RAUND '+roundNum+'   ('+wins1+' - '+wins2+')';
+  roundState='ready'; roundTimer=70;
+}
+
+function endRoundCheck(){
+  if(roundState!=='fight') return;
+  if(!F1.alive || !F2.alive){
+    roundState='over'; roundTimer=140;
+    if(!F1.alive && !F2.alive){ /* berabere */ }
+    else if(!F2.alive){ wins1++; }
+    else { wins2++; }
+    sfxWin();
+  }
+}
+
+function matchWinner(){
+  if(wins1>=2) return 1;
+  if(wins2>=2) return 2;
+  return 0;
+}
+
+function nextRoundOrEnd(){
+  const w=matchWinner();
+  if(w){
+    mode='menu'; overlay.classList.remove('hidden');
+    const who = w===1 ? (twoPlayer?'OYUNCU 1 KAZANDI':'KAZANDIN!') : (twoPlayer?'OYUNCU 2 KAZANDI':'KAYBETTİN...');
+    document.querySelector('#overlay h1').textContent = w===1? '🏆 GALİP' : '☠ MAĞLUP';
+    ovSub.textContent = who + '   ('+wins1+' - '+wins2+')';
+  } else {
+    roundNum++;
+    startRound();
+  }
+}
+
+/* ---------- Ana döngü ---------- */
+function update(){
+  if(mode!=='play'||paused) return;
+
+  // raund akışı
+  if(roundState==='ready'){ roundTimer--; if(roundTimer<=0) roundState='fight'; }
+  else if(roundState==='over'){ roundTimer--; if(roundTimer<=0) nextRoundOrEnd(); }
+
+  const active = roundState==='fight';
+
+  const in1 = active ? playerInput() : {};
+  const in2 = active ? (twoPlayer? player2Input() : aiInput(F2,F1)) : {};
+
+  // savurma sesi
+  if(in1.attack && F1.swing<=0 && F1.hitCd<=0) sfxSwing();
+  if(in2.attack && F2.swing<=0 && F2.hitCd<=0) sfxSwing();
+
+  F1.control(in1, F2);
+  F2.control(in2, F1);
+  F1.integrate(); F2.integrate();
+  F1.solve(6); F2.solve(6);
+
+  // dövüşçüler arası itme (üst üste binmesin)
+  bodyPush(F1,F2);
+
+  if(active){
+    swordHits(F1,F2);
+    swordHits(F2,F1);
+    endRoundCheck();
+  }
+
+  updateBlood();
+  updateHUD();
+}
+
+function bodyPush(a,b){
+  const pairs=[[a.hip,b.hip],[a.neck,b.neck]];
+  for(const [pa,pb] of pairs){
+    const dx=pb.x-pa.x; const d=Math.abs(dx); const min=34;
+    if(d<min){
+      const push=(min-d)/2*Math.sign(dx||1);
+      pa.x-=push; pb.x+=push;
+    }
+  }
+}
+
+function updateHUD(){
+  document.getElementById('hp1').style.width=Math.max(0,F1.hp)+'%';
+  document.getElementById('hp2').style.width=Math.max(0,F2.hp)+'%';
+}
+
+/* ---------- Çizim ---------- */
+function drawBackground(){
+  // gökyüzü
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#2a1e28'); g.addColorStop(0.5,'#3a2420'); g.addColorStop(1,'#20140f');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // ay
+  ctx.fillStyle='rgba(230,220,180,0.15)'; ctx.beginPath(); ctx.arc(W-140,90,54,0,7); ctx.fill();
+  ctx.fillStyle='rgba(230,220,180,0.9)'; ctx.beginPath(); ctx.arc(W-140,90,42,0,7); ctx.fill();
+  // uzak kale silüeti
+  ctx.fillStyle='#160f0c';
+  for(let i=0;i<8;i++){ const x=60+i*120; const h=90+((i*53)%60); ctx.fillRect(x,GROUND-h,70,h);
+    ctx.fillRect(x,GROUND-h-14,14,14); ctx.fillRect(x+28,GROUND-h-14,14,14); ctx.fillRect(x+56,GROUND-h-14,14,14); }
+  // zemin
+  ctx.fillStyle='#241812'; ctx.fillRect(0,GROUND,W,H-GROUND);
+  ctx.fillStyle='#3a2a1e'; ctx.fillRect(0,GROUND,W,6);
+  // zemin kan lekeleri
+  for(const s of splats){ ctx.fillStyle=s.color; ctx.globalAlpha=s.a; ctx.beginPath(); ctx.ellipse(s.x,s.y+3,s.r,s.r*0.4,0,0,7); ctx.fill(); }
+  ctx.globalAlpha=1;
+}
+
+function drawFighter(f){
+  const dead=!f.alive;
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  // bacaklar
+  ctx.strokeStyle=f.cloth; ctx.lineWidth=13;
+  line(f.hip,f.kneeF); line(f.kneeF,f.footF);
+  ctx.strokeStyle=shade(f.cloth,-20); ctx.lineWidth=13;
+  line(f.hip,f.kneeB); line(f.kneeB,f.footB);
+  // ayakkabı
+  ctx.strokeStyle='#1a1208'; ctx.lineWidth=8;
+  footMark(f.footF); footMark(f.footB);
+  // gövde
+  ctx.strokeStyle=f.tone; ctx.lineWidth=22;
+  line(f.hip,f.neck);
+  ctx.strokeStyle=f.cloth; ctx.lineWidth=24;
+  // zırh/tunik üst
+  ctx.beginPath(); ctx.moveTo(f.neck.x,f.neck.y); ctx.lineTo((f.neck.x+f.hip.x)/2,(f.neck.y+f.hip.y)/2); ctx.stroke();
+  // arka kol (off hand)
+  ctx.strokeStyle=shade(f.tone,-25); ctx.lineWidth=9;
+  ctx.beginPath(); ctx.moveTo(f.neck.x,f.neck.y+4); ctx.lineTo(f.offHand.x,f.offHand.y); ctx.stroke();
+  // ön kol (kılıç kolu)
+  ctx.strokeStyle=f.tone; ctx.lineWidth=10;
+  line(f.shoulder,f.elbow); line(f.elbow,f.hand);
+  // kafa
+  ctx.fillStyle=f.tone; ctx.beginPath(); ctx.arc(f.head.x,f.head.y,15,0,7); ctx.fill();
+  // miğfer
+  ctx.fillStyle=shade(f.cloth,10); ctx.beginPath(); ctx.arc(f.head.x,f.head.y-2,15,Math.PI,0); ctx.fill();
+  ctx.fillRect(f.head.x-15,f.head.y-4,30,4);
+  // gözler
+  if(!dead){
+    ctx.fillStyle='#000';
+    const ex=f.facing*4;
+    ctx.fillRect(f.head.x+ex-3,f.head.y-2,3,4);
+    ctx.fillRect(f.head.x+ex+2,f.head.y-2,3,4);
+  } else {
+    ctx.strokeStyle='#000'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(f.head.x-6,f.head.y-4); ctx.lineTo(f.head.x-1,f.head.y+1);
+    ctx.moveTo(f.head.x-1,f.head.y-4); ctx.lineTo(f.head.x-6,f.head.y+1);
+    ctx.moveTo(f.head.x+2,f.head.y-4); ctx.lineTo(f.head.x+7,f.head.y+1);
+    ctx.moveTo(f.head.x+7,f.head.y-4); ctx.lineTo(f.head.x+2,f.head.y+1); ctx.stroke();
+  }
+
+  // === KILIÇ ===
+  drawSword(f);
+
+  // siper göstergesi
+  if(f.blocking){
+    ctx.strokeStyle='rgba(120,180,255,0.55)'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(f.hand.x,f.hand.y); ctx.lineTo(f.swordTip.x,f.swordTip.y); ctx.stroke();
+  }
+  // can azsa kanlı görünüm
+  if(f.hp<35 && !dead){
+    ctx.fillStyle='rgba(150,0,0,0.15)'; ctx.beginPath(); ctx.arc(f.head.x,f.head.y,15,0,7); ctx.fill();
+  }
+}
+function drawSword(f){
+  const hx=f.hand.x, hy=f.hand.y, tx=f.swordTip.x, ty=f.swordTip.y;
+  const dx=tx-hx, dy=ty-hy, len=Math.hypot(dx,dy)||1;
+  const ux=dx/len, uy=dy/len, nx=-uy, ny=ux;
+  // sap
+  ctx.strokeStyle='#3a2410'; ctx.lineWidth=6;
+  ctx.beginPath(); ctx.moveTo(hx-ux*8,hy-uy*8); ctx.lineTo(hx+ux*4,hy+uy*4); ctx.stroke();
+  // balçak (guard)
+  ctx.strokeStyle='#c9a227'; ctx.lineWidth=5;
+  ctx.beginPath(); ctx.moveTo(hx+ux*4-nx*7,hy+uy*4-ny*7); ctx.lineTo(hx+ux*4+nx*7,hy+uy*4+ny*7); ctx.stroke();
+  // namlu
+  const grad=ctx.createLinearGradient(hx,hy,tx,ty);
+  grad.addColorStop(0,'#e8e8ee'); grad.addColorStop(1,'#9aa0aa');
+  ctx.strokeStyle=grad; ctx.lineWidth=6;
+  ctx.beginPath(); ctx.moveTo(hx+ux*4,hy+uy*4); ctx.lineTo(tx,ty); ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,0.6)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(hx+ux*6,hy+uy*6); ctx.lineTo(tx-ux*3,ty-uy*3); ctx.stroke();
+  // hızlıysa iz (motion streak)
+  const sp=f.swordSpeed();
+  if(sp>14){
+    ctx.strokeStyle='rgba(255,255,255,'+Math.min(0.5,sp/60)+')'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(tx-f.swordTip.vx()*1.5, ty-f.swordTip.vy()*1.5); ctx.stroke();
+  }
+}
+function line(a,b){ ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
+function footMark(p){ ctx.beginPath(); ctx.moveTo(p.x-6,p.y); ctx.lineTo(p.x+8,p.y); ctx.stroke(); }
+function shade(hex,amt){
+  const n=parseInt(hex.slice(1),16);
+  let r=(n>>16)+amt, g=((n>>8)&255)+amt, b=(n&255)+amt;
+  r=Math.max(0,Math.min(255,r)); g=Math.max(0,Math.min(255,g)); b=Math.max(0,Math.min(255,b));
+  return '#'+((r<<16)|(g<<8)|b).toString(16).padStart(6,'0');
+}
+
+function drawBlood(){
+  for(const b of blood){ ctx.fillStyle=b.color; ctx.globalAlpha=Math.min(1,b.life/40);
+    ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,7); ctx.fill(); }
+  ctx.globalAlpha=1;
+}
+
+function drawRoundText(){
+  if(roundState==='ready'){
+    banner( roundTimer>25?'RAUND '+roundNum : 'DÖVÜŞ!', roundTimer>25?'#e0a83e':'#e53935');
+  } else if(roundState==='over'){
+    let msg='BERABERE';
+    if(!F2.alive && F1.alive) msg=(twoPlayer?'OYUNCU 1':'SEN')+' KAZANDI';
+    else if(!F1.alive && F2.alive) msg=(twoPlayer?'OYUNCU 2':'HAYDUT')+' KAZANDI';
+    banner(msg,'#e53935');
+  }
+  if(paused) banner('DURAKLATILDI (P)','#e0a83e');
+}
+function banner(text,color){
+  ctx.save();
+  ctx.font='bold 52px Trebuchet MS, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.lineWidth=6; ctx.strokeStyle='#000'; ctx.strokeText(text,W/2,H/2-40);
+  ctx.fillStyle=color; ctx.fillText(text,W/2,H/2-40);
+  ctx.restore();
+}
+
+function render(){
+  drawBackground();
+  if(F1&&F2){
+    // gölgeler
+    ctx.fillStyle='rgba(0,0,0,0.3)';
+    for(const f of [F1,F2]){ ctx.beginPath(); ctx.ellipse(f.cx,GROUND+4,26,7,0,0,7); ctx.fill(); }
+    drawFighter(F2); drawFighter(F1);
+  }
+  drawBlood();
+  if(mode==='play') drawRoundText();
+}
+
+function loop(){
+  update();
+  render();
+  requestAnimationFrame(loop);
+}
+loop();
+
+/* ---------- Menü ---------- */
+function togglePause(){ if(mode==='play') paused=!paused; }
+document.getElementById('startBtn').onclick=()=>newMatch(false);
+document.getElementById('start2').onclick=()=>newMatch(true);
+document.getElementById('start2').addEventListener('mouseenter',()=>{document.getElementById('p2keys').style.display='inline';});
+</script>
+</body>
+</html>
