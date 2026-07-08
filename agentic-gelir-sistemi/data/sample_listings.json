@@ -1,0 +1,27 @@
+[
+  {
+    "source": "upwork",
+    "title": "STM32 firmware + Windows WPF configuration tool for sensor device",
+    "description": "We need firmware for our STM32-based sensor board (UART protocol) plus a C# WPF desktop app to configure and calibrate the device over USB. RTOS experience a plus."
+  },
+  {
+    "source": "toptal",
+    "title": "ESP32 IoT firmware and companion desktop dashboard (C#/.NET)",
+    "description": "Build ESP32 firmware for a BLE sensor and a Windows companion dashboard to visualize live data and push config. Embedded + desktop skills required."
+  },
+  {
+    "source": "wellfound",
+    "title": "React frontend developer for e-commerce website",
+    "description": "Looking for a React/Next.js developer to build a modern storefront. No hardware involved."
+  },
+  {
+    "source": "upwork",
+    "title": "Embedded Linux driver developer (no GUI)",
+    "description": "Kernel-level driver work on an embedded Linux platform. Firmware/embedded background required. No desktop application needed."
+  },
+  {
+    "source": "linkedin",
+    "title": "WPF desktop app for warehouse inventory management",
+    "description": "Build a C# WPF application for inventory tracking with SQL backend. Pure desktop software, no embedded/hardware component."
+  }
+]

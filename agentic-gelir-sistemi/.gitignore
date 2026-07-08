@@ -1,0 +1,5 @@
+# Sırlar ve yerel veri — ASLA commit edilmez
+.env
+data/*.db
+__pycache__/
+*.pyc
