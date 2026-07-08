@@ -17,7 +17,9 @@ from agents import lead_research
 def main():
     store.init_db()
 
-    data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "sample_listings.json")
+    # İsteğe bağlı: python3 run_demo.py data/live_listings.json  (canlı çekilen gerçek ilanlar)
+    default = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "sample_listings.json")
+    data_path = sys.argv[1] if len(sys.argv) > 1 else default
     with open(data_path, encoding="utf-8") as f:
         listings = json.load(f)
 
