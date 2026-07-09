@@ -10,7 +10,7 @@ Maliyet:   0₺  (LLM_MODE=mock — henüz gerçek API yok)
 import os
 import sys
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from agents import lead_research  # noqa: E402
@@ -23,9 +23,11 @@ HEADERS = ["taranma_zamani", "kaynak", "ilan", "skor", "neden", "eslesme", "link
 LINK_COL = 7  # 'link' sütununun 1-tabanlı indeksi (Excel'de köprü için)
 
 
+TR = timezone(timedelta(hours=3))  # Türkiye saati (UTC+3, kalıcı — yaz saati yok)
+
+
 def _now():
-    # Tarama makinesinin saati (bu container UTC). Gerçek VPS'te yerel saat olur.
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    return datetime.now(TR).strftime("%Y-%m-%d %H:%M:%S TRT")
 
 
 def _ensure_wb():
