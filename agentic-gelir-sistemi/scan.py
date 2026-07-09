@@ -19,7 +19,8 @@ from openpyxl import Workbook, load_workbook  # noqa: E402
 ROOT = os.path.dirname(os.path.abspath(__file__))
 XLSX = os.path.join(ROOT, "reports", "lead_scan.xlsx")
 DEFAULT_DATA = os.path.join(ROOT, "data", "live_listings.json")
-HEADERS = ["taranma_zamani", "kaynak", "ilan", "skor", "neden", "eslesme", "durum"]
+HEADERS = ["taranma_zamani", "kaynak", "ilan", "skor", "neden", "eslesme", "link", "durum"]
+LINK_COL = 7  # 'link' sütununun 1-tabanlı indeksi (Excel'de köprü için)
 
 
 def _now():
@@ -49,8 +50,13 @@ def main():
 
     wb, ws = _ensure_wb()
     for s in scored:
+        url = s.get("url", "")
         ws.append([ts, s.get("source", "?"), s["title"], s["score"],
-                   s["reason"], ", ".join(s["skills"]), "queued"])
+                   s["reason"], ", ".join(s["skills"]), url, "queued"])
+        if url:  # link hücresini tıklanabilir köprü yap
+            cell = ws.cell(row=ws.max_row, column=LINK_COL)
+            cell.hyperlink = url
+            cell.style = "Hyperlink"
     wb.save(XLSX)
 
     top = [s for s in scored if s["score"] >= 90]
@@ -60,6 +66,7 @@ def main():
     for s in scored:
         flag = "⭐" if s["score"] >= 90 else "  "
         print(f"   {flag} [{s['score']:>3}] {s['title']}  ({s.get('source')})")
+        print(f"          {s.get('url', '(link yok)')}")
     print()
 
 

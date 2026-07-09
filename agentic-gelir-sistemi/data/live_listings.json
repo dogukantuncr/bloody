@@ -2,36 +2,43 @@
   {
     "source": "remotive",
     "title": "Senior Embedded Firmware Engineer",
+    "url": "https://remotive.com/remote/jobs/software-development/senior-embedded-firmware-engineer-4570395",
     "description": "End-to-end ownership of the device firmware stack on Espressif ESP32: schematic review, board bring-up, production firmware, OTA, and Matter protocol certification. Independent contractor, ~$60/hr, 30-40 hrs/week. No desktop/GUI work mentioned."
   },
   {
     "source": "arc.dev",
     "title": "STM32 firmware contractor (C/C++, FreeRTOS)",
+    "url": "https://arc.dev/remote-jobs/firmware",
     "description": "Design and implement embedded firmware in C/C++ for STM32L4/F4 microcontrollers with FreeRTOS or Zephyr RTOS. Deliverables: documented source, build and flash instructions, hardware test notes, architecture rationale."
   },
   {
     "source": "glassdoor",
     "title": "Firmware engineer + existing C# companion app maintenance",
+    "url": "https://www.glassdoor.com/Job/firmware-engineer-software-contractor-jobs-SRCH_KO0,37.htm",
     "description": "Firmware updates for an ARM Cortex embedded device, plus gaining a full understanding of the existing C# desktop application and its device interface to extend configuration features over USB."
   },
   {
     "source": "arc.dev",
     "title": "WPF desktop application developer",
+    "url": "https://arc.dev/remote-jobs/wpf",
     "description": "Design and build modern Windows desktop application UIs in C#, XAML and MVVM using Visual Studio and third-party UI libraries. Pure desktop software, no embedded/hardware component."
   },
   {
     "source": "upwork",
     "title": "ESP32 BLE sensor firmware freelancer",
+    "url": "https://www.upwork.com/freelance-jobs/firmware/",
     "description": "ESP32 firmware for a Bluetooth Low Energy sensor product using ESP-IDF/Arduino. Sensor drivers and BLE stack. No desktop tool required for this engagement."
   },
   {
     "source": "contract-board",
     "title": "Embedded device with Windows configuration & calibration tool",
+    "url": "https://www.indeed.com/q-Embedded-Firmware-Contract-Engineer-jobs.html",
     "description": "STM32 firmware plus a companion Windows WPF application to configure and calibrate the device over serial/USB and display live sensor data. Both embedded and desktop skills required."
   },
   {
     "source": "indeed",
     "title": "Remote full-stack web developer (React/Node)",
+    "url": "https://www.indeed.com/q-c%23-developer-l-remote-jobs.html",
     "description": "Build a web application front-end in React and a REST API backend in Node.js. No embedded, hardware, or desktop-native component."
   }
 ]
